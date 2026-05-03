@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>BEACNomics — Carbon Abatement Cost Curve</title>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #1b285b;
+    --blue:    #1075E8;
+    --blue-lt: #88b4f2;
+    --green:   #25ac01;
+    --lavender:#d7def8;
+    --sky:     #d7e7f8;
+    --bg:      #f5f7fb;
+    --white:   #ffffff;
+    --text:    #1b285b;
+    --muted:   #6b7a9e;
+    --border:  #dde3f0;
+    --font:    'Source Sans 3', sans-serif;
+  }
+
+  html { font-size: 16px; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 0 2rem;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    color: #fff;
+  }
+  .logo span { color: var(--green); font-weight: 700; }
+  .header-sub {
+    font-size: 0.75rem;
+    color: var(--blue-lt);
+    font-weight: 400;
+    text-align: right;
+    line-height: 1.5;
+  }
+
+  /* ── LAYOUT ── */
+  main {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    flex: 1;
+    min-height: 0;
+  }
+
+  /* ── SIDEBAR ── */
+  aside {
+    background: var(--white);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .ctrl-card {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.9rem 1rem;
+  }
+
+  .section-head {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--blue);
+    margin-bottom: 0.8rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid var(--blue);
+    display: inline-block;
+  }
+
+  .ctrl-row {
+    margin-bottom: 0.85rem;
+  }
+  .ctrl-row:last-child { margin-bottom: 0; }
+
+  .ctrl-row-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 4px;
+  }
+  .ctrl-row-top label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .ctrl-val {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--lavender);
+    outline: none;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--blue);
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type=range]::-moz-range-thumb {
+    width: 14px; height: 14px; border: none;
+    border-radius: 50%; background: var(--blue); cursor: pointer;
+  }
+
+  .ctrl-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+  }
+  .ctrl-input input[type=range] { flex: 1; margin-top: 0; }
+  .ctrl-input input[type=number] {
+    width: 62px;
+    flex-shrink: 0;
+    padding: 2px 5px;
+    font-size: 0.72rem;
+    font-family: var(--font);
+    font-weight: 600;
+    color: var(--navy);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    text-align: right;
+    outline: none;
+    -moz-appearance: textfield;
+  }
+  .ctrl-input input[type=number]:focus {
+    border-color: var(--blue);
+    background: var(--white);
+  }
+  .ctrl-input input[type=number]::-webkit-inner-spin-button,
+  .ctrl-input input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+  /* ── CONTENT ── */
+  .content {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── STATS BAR ── */
+  .stats-bar {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+  }
+  .stat {
+    padding: 0.85rem 1.25rem;
+    border-right: 1px solid var(--border);
+  }
+  .stat:last-child { border-right: none; }
+  .stat-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 3px;
+  }
+  .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .stat-value.green  { color: var(--green); }
+  .stat-value.blue   { color: var(--blue); }
+  .stat-value.orange { color: #d45a00; }
+
+  /* ── CHART AREA ── */
+  .chart-area {
+    flex: 1;
+    padding: 1.25rem 1.5rem 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-height: 0;
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .chart-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--navy);
+  }
+  .chart-subtitle {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+    line-height: 1.4;
+  }
+
+  .legend {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .chart-wrap {
+    flex: 1;
+    min-height: 280px;
+    position: relative;
+  }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    border-top: 1px solid var(--border);
+    padding: 0.85rem 1.5rem 1.25rem;
+    overflow-x: auto;
+    background: var(--white);
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+  }
+  .data-table th {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border-bottom: 2px solid var(--border);
+    background: var(--bg);
+  }
+  .data-table td {
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--navy);
+  }
+  .data-table tr:last-child td { border-bottom: none; }
+  .data-table tr:hover td { background: var(--sky); }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .badge-most   { background: var(--lavender); color: var(--navy); }
+  .badge-medium { background: var(--sky);      color: var(--blue); }
+  .badge-least  { background: #e8f5e4;          color: #1a7a00; }
+
+  .negative { color: var(--green); font-weight: 600; }
+  .costly   { color: #d45a00;     font-weight: 600; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    background: var(--white);
+    padding: 0.6rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.68rem;
+    color: var(--muted);
+  }
+  footer a { color: var(--blue); text-decoration: none; font-weight: 600; }
+  footer a:hover { text-decoration: underline; }
+
+  .cta-bar {
+    background: var(--lavender);
+    border-top: 1px solid var(--border);
+    padding: 0.75rem 2rem;
+    font-size: 0.78rem;
+    color: var(--navy);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .cta-bar span { font-weight: 700; }
+  .cta-bar a { color: var(--blue); font-weight: 700; text-decoration: none; }
+  .cta-bar a:hover { text-decoration: underline; }
+
+  .qmark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    background: var(--blue);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+    position: relative;
+    vertical-align: middle;
+    margin-left: 4px;
+    user-select: none;
+  }
+  .qmark-popup {
+    display: none;
+    position: fixed;
+    width: 240px;
+    background: var(--navy);
+    color: #d7def8;
+    font-size: 0.72rem;
+    line-height: 1.55;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--blue);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+    z-index: 99999;
+    pointer-events: none;
+  }
+  .qmark-popup a { color: #88b4f2; }
+  .qmark:hover .qmark-popup,
+  .qmark:focus .qmark-popup { display: block; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  @media (max-width: 900px) {
+    main { grid-template-columns: 1fr; }
+    aside { border-right: none; border-bottom: 1px solid var(--border); max-height: 50vh; }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><span>BEACN</span>omics Cost Curve</div>
+  <div class="header-sub">Carbon Abatement Model · Data Centers<br>18 MW fixed · Virginia baseline</div>
+</header>
+
+<main>
+  <!-- SIDEBAR -->
+  <aside>
+    <div class="ctrl-card">
+      <div class="section-head">Regional Energy</div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Electricity price</label><span class="ctrl-val" id="v-elec">$90.73 / MWh</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="elecPrice" min="0" max="400" step="0.5" value="90.73">
+          <input type="number" id="elecPrice-num" min="0" max="400" step="0.5" value="90.73">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Grid emission factor</label><span class="ctrl-val" id="v-ef">0.350 tCO₂e / MWh</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="emissionFactor" min="0.05" max="1.0" step="0.005" value="0.350">
+          <input type="number" id="emissionFactor-num" min="0.05" max="1.0" step="0.005" value="0.350">
+        </div>
+      </div>
+    </div>
+
+    <div class="ctrl-card">
+      <div class="section-head">
+        AI Cooling Optimization
+        <span class="qmark" tabindex="0">?
+          <div class="qmark-popup">
+            The values used here are provided by the client — individual calculations will vary based on facility configuration. An example calculation and full methodology is covered in the BEACNomics Research Document.
+          </div>
+        </span>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Width (CO₂e potential)</label><span class="ctrl-val" id="v-vigw">26,000 tCO₂e/yr</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="vigW" min="0" max="100000" step="500" value="26000">
+          <input type="number" id="vigW-num" min="0" max="100000" step="500" value="26000">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Height (abatement cost)</label><span class="ctrl-val" id="v-vigh">−$141 / tCO₂e</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="vigH" min="-1000" max="1000" step="1" value="-141">
+          <input type="number" id="vigH-num" min="-1000" max="1000" step="1" value="-141">
+        </div>
+      </div>
+    </div>
+
+    <div class="ctrl-card">
+      <div class="section-head">Operational Settings</div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Temp setpoint adjustment</label><span class="ctrl-val" id="v-temp">10°F</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="tempDiff" min="1" max="20" step="1" value="10">
+          <input type="number" id="tempDiff-num" min="1" max="20" step="1" value="10">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Renewable PPA share</label><span class="ctrl-val" id="v-ppa">20%</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="ppaShare" min="0" max="1.0" step="0.01" value="0.20">
+          <input type="number" id="ppaShare-num" min="0" max="100" step="1" value="20">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Wind PPA price</label><span class="ctrl-val" id="v-wind">$65 / MWh</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="windPrice" min="0" max="400" step="1" value="65">
+          <input type="number" id="windPrice-num" min="0" max="400" step="1" value="65">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Solar PPA price</label><span class="ctrl-val" id="v-solar">$90 / MWh</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="solarPrice" min="0" max="400" step="1" value="90">
+          <input type="number" id="solarPrice-num" min="0" max="400" step="1" value="90">
+        </div>
+      </div>
+    </div>
+
+    <div class="ctrl-card">
+      <div class="section-head">Infrastructure</div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Carbon offset limit</label><span class="ctrl-val" id="v-offset">100%</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="offsetLimit" min="0" max="1.0" step="0.01" value="1.0">
+          <input type="number" id="offsetLimit-num" min="0" max="100" step="1" value="100">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Current PUE</label><span class="ctrl-val" id="v-oldpue">1.57</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="oldPue" min="1.0" max="2.5" step="0.01" value="1.57">
+          <input type="number" id="oldPue-num" min="1.0" max="2.5" step="0.01" value="1.57">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Target PUE</label><span class="ctrl-val" id="v-newpue">1.20</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="newPue" min="1.0" max="2.5" step="0.01" value="1.20">
+          <input type="number" id="newPue-num" min="1.0" max="2.5" step="0.01" value="1.20">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Liquid cooling lifespan</label><span class="ctrl-val" id="v-lc">5 yr</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="lcLifespan" min="0" max="10" step="1" value="5">
+          <input type="number" id="lcLifespan-num" min="0" max="10" step="1" value="5">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Facility size <span style="font-size:0.65rem;color:var(--muted);font-weight:400;">(18 MW fixed)</span></label><span class="ctrl-val" id="v-sqft">225,000 sq ft</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="facilitySqft" min="50000" max="600000" step="5000" value="225000">
+          <input type="number" id="facilitySqft-num" min="50000" max="600000" step="5000" value="225000">
+        </div>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-row-top"><label>Server count <span style="font-size:0.65rem;color:var(--muted);font-weight:400;">(18 MW fixed)</span></label><span class="ctrl-val" id="v-servers">900</span></div>
+        <div class="ctrl-input">
+          <input type="range" id="serverCount" min="100" max="5000" step="50" value="900">
+          <input type="number" id="serverCount-num" min="100" max="5000" step="50" value="900">
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <!-- STATS -->
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-label">Cheapest abatement option</div>
+        <div class="stat-value blue" id="stat-cheap">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Highest potential abatement option</div>
+        <div class="stat-value blue" id="stat-potential">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">No. of negative-cost options</div>
+        <div class="stat-value green" id="stat-neg">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Total potential from negative-cost options</div>
+        <div class="stat-value green" id="stat-negpot">—</div>
+      </div>
+    </div>
+
+    <!-- CHART -->
+    <div class="chart-area">
+      <div class="chart-header">
+        <div>
+          <div class="chart-title">Marginal Abatement Cost Curve</div>
+          <div class="chart-subtitle">Bar width = CO₂e reduction potential (tCO₂e/yr) &nbsp;·&nbsp; Bar height = abatement cost ($/tCO₂e) &nbsp;·&nbsp; Sorted lowest → highest cost</div>
+        </div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#1b285b;"></div>Most implementable</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#1075E8;"></div>Moderate</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#88b4f2;"></div>Least implementable</div>
+        </div>
+      </div>
+      <div class="chart-wrap">
+        <canvas id="costCurve" role="img" aria-label="BEACNomics marginal abatement cost curve. Each bar is a decarbonization measure. Width = CO2 reduction potential, height = cost per tonne."></canvas>
+      </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Measure</th>
+            <th>Implementability</th>
+            <th>Cost ($/tCO₂e)</th>
+            <th>Potential (tCO₂e/yr)</th>
+            <th>ESG Reputation</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<div class="cta-bar">
+  <span>🔬 Want to explore your own values?</span>
+  Build a custom BEACNomics curve with your own inputs in the original Google Colab notebook:
+  <a href="https://colab.research.google.com/drive/16OxdCtJCTVeuZxVlYWs4XumJOiJZvvZP?usp=sharing" target="_blank">Open in Google Colab ↗</a>
+</div>
+
+<footer>
+  <span>BEACNomics Cost Curve Model · Dynamic regional parameters · All values in USD</span>
+  <span><a href="https://docs.google.com/document/d/1tPwhT1rRnnHP4mM0CboFmDmB44sNKOx6HreBAcGWziU/edit" target="_blank">BEACNomics Research Document ↗</a></span>
+</footer>
+
+<script>
+const FACILITY_CAPACITY = 18;
+const ANNUAL_ENERGY = FACILITY_CAPACITY * 8760;
+const FACILITY_SQFT = 225000;
+const SERVER_COUNT = 900;
+
+function calcData(p) {
+  const { elecPrice: e, emissionFactor: ef, tempDiff: td, ppaShare: ps,
+          windPrice: wp, solarPrice: sp, offsetLimit: ol, oldPue, newPue,
+          lcLifespan: lc, facilitySqft: sqft, serverCount: servers } = p;
+
+  const aisleW = 0.2 * ANNUAL_ENERGY * ef;
+  const aisleH = aisleW === 0 ? 0 : (-0.2 * ANNUAL_ENERGY * e) / aisleW;
+
+  const tempW = 0.045 * td * ANNUAL_ENERGY * ef;
+  const tempH = tempW === 0 ? 0 : (-0.045 * td * ANNUAL_ENERGY * e) / tempW;
+
+  const virtW = 0.47 * ANNUAL_ENERGY * ef;
+  const virtH = virtW === 0 ? 0 : (2600 * (servers / 6) - 0.47 * ANNUAL_ENERGY * e) / virtW;
+
+  const vigW = p.vigW, vigH = p.vigH;
+
+  const windW = ps * ANNUAL_ENERGY * ef;
+  const windSav = ps * ANNUAL_ENERGY * (e - wp);
+  const windH = windW === 0 ? 0 : (-windSav + (1500 * FACILITY_CAPACITY * 1000 * ps) / 15 + 40 * FACILITY_CAPACITY * 1000 * ps) / windW;
+
+  const solarW = ps * ANNUAL_ENERGY * ef;
+  const solarSav = ps * ANNUAL_ENERGY * (e - sp);
+  const solarH = solarW === 0 ? 0 : (-solarSav + (1250 * FACILITY_CAPACITY * 1000 * ps) / 15 + 12.5 * FACILITY_CAPACITY * 1000 * ps) / solarW;
+
+  const offW = ol * ANNUAL_ENERGY * ef;
+
+  const hvacW = 0.25 * ANNUAL_ENERGY * ef;
+  const hvacH = hvacW === 0 ? 0 : (25 * sqft - 0.25 * ANNUAL_ENERGY * e) / hvacW;
+
+  const hwW = 0.20 * ANNUAL_ENERGY * ef;
+  const hwH = hwW === 0 ? 0 : (3000 * servers - 960 * servers) / hwW;
+
+  const newDcE = ANNUAL_ENERGY * (newPue / oldPue);
+  const pueW = (ANNUAL_ENERGY - newDcE) * ef;
+  const pueH = pueW === 0 ? 0 : ((12000000 * FACILITY_CAPACITY) / 20 - (ANNUAL_ENERGY - newDcE) * e) / pueW;
+
+  const lcW = 0.18 * ANNUAL_ENERGY * ef;
+  const lcCapex = lc === 0 ? Infinity : (600 * FACILITY_CAPACITY * 1000) / lc;
+  const lcSav = 0.15 * ANNUAL_ENERGY * e;
+  const lcH = lcW === 0 ? 0 : (lcCapex - lcSav) / lcW;
+
+  return [
+    { label: 'Hot/Cold Aisle Containment',  h: aisleH, w: aisleW, conv: 'most',   annualSav: 0.2 * ANNUAL_ENERGY * e },
+    { label: 'Raising Temperature Setpoint', h: tempH,  w: tempW,  conv: 'most',   annualSav: 0.045 * td * ANNUAL_ENERGY * e },
+    { label: 'Server Virtualization',        h: virtH,  w: virtW,  conv: 'medium', annualSav: 0.47 * ANNUAL_ENERGY * e - 2600 * (servers / 6) },
+    { label: 'AI Cooling Optimization',      h: vigH,   w: vigW,   conv: 'most',   annualSav: vigH * vigW * -1 },
+    { label: 'Wind Energy PPA',              h: windH,  w: windW,  conv: 'least',  annualSav: windSav },
+    { label: 'Carbon Offsets — REDD+',       h: 4,      w: offW,   conv: 'most',   annualSav: null },
+    { label: 'Carbon Offsets — ARR',         h: 11,     w: offW,   conv: 'most',   annualSav: null },
+    { label: 'Solar Energy PPA',             h: solarH, w: solarW, conv: 'least',  annualSav: solarSav },
+    { label: 'Upgrading HVAC Infrastructure',h: hvacH,  w: hvacW,  conv: 'medium', annualSav: 0.25 * ANNUAL_ENERGY * e - 25 * sqft },
+    { label: 'Efficient Hardware Upgrades',  h: hwH,    w: hwW,    conv: 'medium', annualSav: null },
+    { label: 'Lower PUE Data Center',        h: pueH,   w: pueW,   conv: 'least',  annualSav: (ANNUAL_ENERGY - newDcE) * e },
+    { label: 'Carbon Offsets — DAC',         h: 600,    w: offW,   conv: 'most',   annualSav: null },
+    { label: 'Liquid Cooling',               h: lcH,    w: lcW,    conv: 'medium', annualSav: lcSav },
+  ].sort((a, b) => a.h - b.h);
+}
+
+function fmtCost(v) {
+  const abs = Math.abs(v).toFixed(1);
+  return v < 0 ? `−$${abs}` : `$${abs}`;
+}
+function fmtK(v) {
+  return Math.abs(v) >= 1000 ? (v / 1000).toFixed(1) + 'k' : Math.round(v).toString();
+}
+function fmtMoney(v) {
+  if (v === null) return '—';
+  const abs = Math.abs(v);
+  let s = abs >= 1e6 ? '$' + (abs / 1e6).toFixed(2) + 'M'
+        : abs >= 1e3 ? '$' + (abs / 1e3).toFixed(0) + 'k'
+        : '$' + abs.toFixed(0);
+  return v < 0 ? '−' + s : s;
+}
+function convColor(c) {
+  return c === 'most' ? '#1b285b' : c === 'medium' ? '#1075E8' : '#88b4f2';
+}
+
+let chartInst;
+
+function buildChart(data) {
+  if (chartInst) { chartInst.destroy(); chartInst = null; }
+
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+
+  // Fixed canvas size — never stretches with data
+  const W = canvas.parentElement.getBoundingClientRect().width;
+  const H = 420;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  canvas.style.width  = W + 'px';
+  canvas.style.height = H + 'px';
+  ctx.scale(dpr, dpr);
+
+  const PAD_L = 64, PAD_R = 16, PAD_T = 30, PAD_B = 110;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+
+  const totalPotential = data.reduce((s, d) => s + d.w, 0);
+  const GAP_FRAC = 0.006;
+  const GAP_POT  = GAP_FRAC * totalPotential;
+  const usable   = totalPotential + GAP_POT * (data.length - 1);
+
+  // Y axis: snap to $100 intervals
+  const heights = data.map(d => d.h);
+  const rawMin = Math.min(...heights, 0);
+  const rawMax = Math.max(...heights, 0);
+  const yMin = Math.floor((rawMin - 50) / 100) * 100;
+  const yMax = Math.ceil((rawMax + 50) / 100) * 100;
+  const yRange = yMax - yMin;
+
+  function toY(v) { return PAD_T + chartH * (1 - (v - yMin) / yRange); }
+  function toX(pot) { return PAD_L + (pot / usable) * chartW; }
+
+  const zeroY = toY(0);
+  const gridColor = '#edf0f7';
+  const axisColor = '#dde3f0';
+  const tickColor = '#6b7a9e';
+  const fontSmall = "10px 'Source Sans 3', sans-serif";
+  const fontTiny  = "9px 'Source Sans 3', sans-serif";
+
+  ctx.clearRect(0, 0, W, H);
+
+  // ── Y grid lines + ticks at every $100 ──
+  ctx.font = fontSmall;
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = tickColor;
+  for (let v = yMin; v <= yMax; v += 100) {
+    const y = toY(v);
+    ctx.strokeStyle = v === 0 ? axisColor : gridColor;
+    ctx.lineWidth   = v === 0 ? 1.5 : 1;
+    ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(W - PAD_R, y); ctx.stroke();
+    const lbl = v < 0 ? `−$${Math.abs(v)}` : `$${v}`;
+    ctx.fillStyle = tickColor;
+    ctx.fillText(lbl, PAD_L - 12, y);
+  }
+
+  // ── Y axis label ──
+  ctx.save();
+  ctx.translate(13, PAD_T + chartH / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = fontSmall;
+  ctx.fillStyle = tickColor;
+  ctx.fillText('Abatement cost ($/tCO₂e)', 0, 0);
+  ctx.restore();
+
+  // ── Top X axis: ticks at every 100k tCO₂e ──
+  const xAxisY = PAD_T;
+  ctx.strokeStyle = axisColor;
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(PAD_L, xAxisY); ctx.lineTo(W - PAD_R, xAxisY); ctx.stroke();
+
+  const xTickStep = 100000;
+  const maxPot = Math.ceil(totalPotential / xTickStep) * xTickStep;
+  ctx.font = fontTiny;
+  ctx.fillStyle = tickColor;
+  ctx.textBaseline = 'bottom';
+  for (let pot = 0; pot <= maxPot; pot += xTickStep) {
+    const x = toX(pot);
+    if (x < PAD_L || x > W - PAD_R) continue;
+    ctx.strokeStyle = gridColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, PAD_T); ctx.lineTo(x, PAD_T + chartH); ctx.stroke();
+    if (pot > 0) {
+      ctx.textAlign = 'center';
+      ctx.fillText((pot / 1000) + 'k', x, xAxisY - 2);
+    }
+    // tick mark
+    ctx.strokeStyle = axisColor;
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x, xAxisY); ctx.lineTo(x, xAxisY + 4); ctx.stroke();
+  }
+  ctx.textAlign = 'left';
+  ctx.fillText('tCO₂e/yr →', PAD_L, xAxisY - 2);
+
+  // ── Bars ──
+  let curPot = 0;
+  const barRects = [];
+
+  data.forEach(d => {
+    const x1 = toX(curPot);
+    const x2 = toX(curPot + d.w);
+    const bw  = Math.max(x2 - x1 - 1, 2);
+    const top    = toY(Math.max(d.h, 0));
+    const bottom = toY(Math.min(d.h, 0));
+    const bh     = Math.abs(bottom - top) || 1;
+
+    ctx.fillStyle = convColor(d.conv);
+    ctx.beginPath();
+    ctx.roundRect(x1 + 1, top, bw, bh, 3);
+    ctx.fill();
+
+    barRects.push({ x: x1, w: bw + 1, barTop: top, barBottom: bottom, data: d });
+
+    // Label placed just below the bottom of the bar (+ 6px gap)
+    const labelY = Math.max(bottom, top + bh) + 6;
+    const cx = x1 + bw / 2;
+    ctx.save();
+    ctx.translate(cx, labelY);
+    ctx.rotate(-Math.PI * 0.42);
+    ctx.textAlign  = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.font = fontSmall;
+    ctx.fillStyle = tickColor;
+    ctx.fillText(d.label, 0, 0);
+    ctx.restore();
+
+    curPot += d.w + GAP_POT;
+  });
+
+  canvas._barRects = barRects;
+}
+
+const ESG_STARS = {
+  'Carbon Offsets — REDD+': 1,
+  'Carbon Offsets — ARR': 1,
+  'Carbon Offsets — DAC': 1,
+  'Hot/Cold Aisle Containment': 2,
+  'Raising Temperature Setpoint': 2,
+  'Server Virtualization': 2,
+  'Liquid Cooling': 2,
+  'Upgrading HVAC Infrastructure': 2,
+  'Efficient Hardware Upgrades': 2,
+  'AI Cooling Optimization': 3,
+  'Wind Energy PPA': 3,
+  'Solar Energy PPA': 3,
+  'Lower PUE Data Center': 3,
+};
+
+function renderStars(label) {
+  const n = ESG_STARS[label] || 0;
+  return '★'.repeat(n) + '<span style="color:#dde3f0">★</span>'.repeat(3 - n);
+}
+
+function buildTable(data) {
+  const body = document.getElementById('tableBody');
+  body.innerHTML = '';
+  data.forEach(d => {
+    const tr = document.createElement('tr');
+    const badgeClass = d.conv === 'most' ? 'badge-most' : d.conv === 'medium' ? 'badge-medium' : 'badge-least';
+    const badgeLabel = d.conv === 'most' ? 'Most' : d.conv === 'medium' ? 'Moderate' : 'Least';
+    const costClass  = d.h < 0 ? 'negative' : d.h > 200 ? 'costly' : '';
+    tr.innerHTML = `
+      <td>${d.label}</td>
+      <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+      <td class="${costClass}">${fmtCost(d.h)}</td>
+      <td>${fmtK(d.w)}</td>
+      <td style="color:#25ac01;font-size:1rem;letter-spacing:1px;">${renderStars(d.label)}</td>
+    `;
+    body.appendChild(tr);
+  });
+}
+
+function updateStats(data) {
+  const sorted    = [...data].sort((a, b) => a.h - b.h);
+  const cheapest  = sorted[0];
+  const highestPot = [...data].sort((a, b) => b.w - a.w)[0];
+  const negItems  = data.filter(d => d.h < 0);
+  const negPot    = negItems.reduce((s, d) => s + d.w, 0);
+
+  document.getElementById('stat-cheap').textContent    = cheapest.label;
+  document.getElementById('stat-potential').textContent = highestPot.label;
+  document.getElementById('stat-neg').textContent      = negItems.length + ' options';
+  document.getElementById('stat-negpot').textContent   = fmtK(negPot) + ' tCO₂e/yr';
+}
+
+function getParams() {
+  return {
+    elecPrice:      +document.getElementById('elecPrice').value,
+    emissionFactor: +document.getElementById('emissionFactor').value,
+    tempDiff:       +document.getElementById('tempDiff').value,
+    ppaShare:       +document.getElementById('ppaShare').value,
+    windPrice:      +document.getElementById('windPrice').value,
+    solarPrice:     +document.getElementById('solarPrice').value,
+    offsetLimit:    +document.getElementById('offsetLimit').value,
+    oldPue:         +document.getElementById('oldPue').value,
+    newPue:         +document.getElementById('newPue').value,
+    lcLifespan:     +document.getElementById('lcLifespan').value,
+    facilitySqft:   +document.getElementById('facilitySqft').value,
+    serverCount:    +document.getElementById('serverCount').value,
+    vigW:           +document.getElementById('vigW').value,
+    vigH:           +document.getElementById('vigH').value,
+  };
+}
+
+function updateLabels(p) {
+  document.getElementById('v-elec').textContent    = `$${p.elecPrice.toFixed(2)} / MWh`;
+  document.getElementById('v-ef').textContent      = `${p.emissionFactor.toFixed(3)} tCO₂e / MWh`;
+  document.getElementById('v-temp').textContent    = `${p.tempDiff}°F`;
+  document.getElementById('v-ppa').textContent     = `${Math.round(p.ppaShare * 100)}%`;
+  document.getElementById('v-wind').textContent    = `$${p.windPrice} / MWh`;
+  document.getElementById('v-solar').textContent   = `$${p.solarPrice} / MWh`;
+  document.getElementById('v-offset').textContent  = `${Math.round(p.offsetLimit * 100)}%`;
+  document.getElementById('v-oldpue').textContent  = p.oldPue.toFixed(2);
+  document.getElementById('v-newpue').textContent  = p.newPue.toFixed(2);
+  document.getElementById('v-lc').textContent      = `${p.lcLifespan} yr`;
+  document.getElementById('v-sqft').textContent    = p.facilitySqft.toLocaleString() + ' sq ft';
+  document.getElementById('v-servers').textContent = p.serverCount.toLocaleString();
+  document.getElementById('v-vigw').textContent    = p.vigW.toLocaleString() + ' tCO₂e/yr';
+  document.getElementById('v-vigh').textContent    = (p.vigH < 0 ? '−$' + Math.abs(p.vigH) : '$' + p.vigH) + ' / tCO₂e';
+}
+
+function refresh() {
+  const p = getParams();
+  updateLabels(p);
+  const data = calcData(p);
+  buildChart(data);
+  buildTable(data);
+  updateStats(data);
+}
+
+// Bidirectional sync: slider ↔ number input
+// For ppaShare and offsetLimit, the number input shows % (0-100) but the range stores 0-1
+const percentFields = new Set(['ppaShare', 'offsetLimit']);
+
+function syncPair(id, fromNumber) {
+  const range = document.getElementById(id);
+  const num   = document.getElementById(id + '-num');
+  if (!range || !num) return;
+  if (fromNumber) {
+    let v = parseFloat(num.value);
+    if (isNaN(v)) return;
+    if (percentFields.has(id)) v = v / 100;
+    v = Math.min(Math.max(v, parseFloat(range.min)), parseFloat(range.max));
+    range.value = v;
+  } else {
+    let v = parseFloat(range.value);
+    num.value = percentFields.has(id) ? Math.round(v * 100) : v;
+  }
+  refresh();
+}
+
+const allIds = ['elecPrice','emissionFactor','tempDiff','ppaShare','windPrice','solarPrice',
+                'offsetLimit','oldPue','newPue','lcLifespan','facilitySqft','serverCount',
+                'vigW','vigH'];
+
+allIds.forEach(id => {
+  const range = document.getElementById(id);
+  const num   = document.getElementById(id + '-num');
+  if (range) range.addEventListener('input', () => syncPair(id, false));
+  if (num)   num.addEventListener('change', () => syncPair(id, true));
+  if (num)   num.addEventListener('keydown', e => { if (e.key === 'Enter') syncPair(id, true); });
+});
+
+// Tooltip
+const tooltip = document.createElement('div');
+tooltip.style.cssText = `
+  position:fixed;pointer-events:none;display:none;z-index:9999;
+  background:#1b285b;border:1px solid #1075E8;border-radius:6px;
+  padding:10px 14px;font-family:'Source Sans 3',sans-serif;font-size:12px;
+  color:#d7def8;line-height:1.6;box-shadow:0 4px 16px rgba(0,0,0,0.18);
+`;
+document.body.appendChild(tooltip);
+
+const canvas = document.getElementById('costCurve');
+
+canvas.addEventListener('mousemove', e => {
+  const rects = canvas._barRects;
+  if (!rects) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const hit = rects.find(r => mx >= r.x && mx <= r.x + r.w && my >= Math.min(r.barTop, r.barBottom) && my <= Math.max(r.barTop, r.barBottom));
+  if (hit) {
+    const d = hit.data;
+    tooltip.innerHTML = `<strong style="color:#fff;font-size:13px;">${d.label}</strong><br>
+      Cost: <strong style="color:${d.h < 0 ? '#25ac01' : '#88b4f2'}">${fmtCost(d.h)} / tCO₂e</strong><br>
+      Potential: <strong style="color:#fff">${fmtK(d.w)} tCO₂e / yr</strong>`;
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top  = (e.clientY - 10) + 'px';
+    canvas.style.cursor = 'crosshair';
+  } else {
+    tooltip.style.display = 'none';
+    canvas.style.cursor = 'default';
+  }
+});
+canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+window.addEventListener('resize', () => refresh());
+setTimeout(refresh, 100);
+
+refresh();
+
+// Position qmark popups using fixed coords so they always appear above everything
+document.querySelectorAll('.qmark').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    const popup = el.querySelector('.qmark-popup');
+    if (!popup) return;
+    const r = el.getBoundingClientRect();
+    popup.style.top  = (r.top - popup.offsetHeight / 2 + r.height / 2) + 'px';
+    popup.style.left = (r.right + 8) + 'px';
+    // Keep popup within viewport vertically
+    const popH = popup.offsetHeight || 120;
+    let top = r.top + r.height / 2 - popH / 2;
+    top = Math.max(8, Math.min(top, window.innerHeight - popH - 8));
+    popup.style.top = top + 'px';
+  });
+});
+</script>
+</body>
+</html>
